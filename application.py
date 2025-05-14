@@ -3,7 +3,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QTreeWidgetItem
 
-from analyse import *
+from analyse_function import *
 from main import Ui_Form as Main_Window
 from tab1 import Ui_Form as Tab1_Window
 
@@ -33,9 +33,6 @@ class Tab1Window(QWidget):
         self.font.setFamily("Arial")  # 设置字体名称
         self.font.setPointSize(10)  # 设置字体大小
         self.font.setBold(True)  # 设置字体为粗体
-        mastery_dic, mastery_dic1, mastery_dic2, mastery_dic3 = calculate_1234mastery()
-        self.dic_list = [mastery_dic3, mastery_dic2, mastery_dic1, mastery_dic]
-        print(self.dic_list)
 
     def InitUI(self, current_item=None):
         self.ui = Tab1_Window()
@@ -47,7 +44,6 @@ class Tab1Window(QWidget):
         self.ui.pushButton.clicked.connect(self.analyse)
 
     def analyse(self):
-        level_list = ['first_label', 'second_label', 'third_label', 'forth_label', 'fifth_label']
         student_name = self.ui.textEdit.toPlainText()
         point = self.ui.textBrowser.toPlainText()
         hard_list = self.ui.comboBox.currentText()
@@ -57,37 +53,17 @@ class Tab1Window(QWidget):
         if len(hard_list) == 0:
             QMessageBox.critical(self.parent, '错误', '请选择难度', QMessageBox.Ok)
             return
-        hard_list = hard_list.replace(' ', '')
-        hard_list = hard_list.split(';')
-        for i in range(len(hard_list)):
-            hard_list[i] = '\'' + hard_list[i] + '\''
-        hard_list = ','.join(hard_list)
-        point_split_list = point.split('-')
-        level = len(point_split_list)
-        # 做题数
-        sql = 'select count(*) from student_topic_table where student_name = ? and difficulty in ({}) and {} = ?'.format(
-            hard_list, level_list[level - 1])
-        self.parent.cursor.execute(sql, (student_name, point_split_list[-1],))
-        result = self.parent.cursor.fetchall()
-        topic_num = result[0][0]
-        # 正确题数
-        sql = 'select count(*) from student_topic_table where student_name = ? and difficulty in ({}) and {} = ? and correct = {}'.format(
-            hard_list, level_list[level - 1], '\'全对\'')
-        self.parent.cursor.execute(sql, (student_name, point_split_list[-1],))
-        result = self.parent.cursor.fetchall()
-        correct_num = result[0][0]
+        topic_num, correct_num = query_topic_and_correct_number(student_name, hard_list, point)
         try:
             correct_per = str(correct_num / topic_num * 100)[:5] + '%'
         except:
             correct_per = '0' + '%'
-        study_ability = '缺少数据'
-        if point_split_list[-1] in self.dic_list[min(3, level - 1)][student_name].keys():
-            study_ability = self.dic_list[min(3, level - 1)][student_name][point_split_list[-1]]
+        study_ability = '缺少数据' if topic_num == 0 else calculate_ablility(student_name, hard_list, point)
         self.ui.textBrowser_4.setText('\n' + str(topic_num))
         self.ui.textBrowser_4.setFont(self.font)
         self.ui.textBrowser_2.setText('\n' + correct_per)
         self.ui.textBrowser_2.setFont(self.font)
-        self.ui.textBrowser_3.setText('\n'+str(study_ability))
+        self.ui.textBrowser_3.setText('\n' + str(study_ability))
         self.ui.textBrowser_3.setFont(self.font)
 
 
