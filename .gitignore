@@ -5,3 +5,5 @@ dist/
 build/
 __pycache__/
 .idea/
+*.xlsx
+/资料标签体系_20250316_V2.3.xlsx

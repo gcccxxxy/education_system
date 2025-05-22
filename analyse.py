@@ -45,8 +45,7 @@ def calculate_mastery(query):
 
     # 学生-知识点统计字典
     stats = {}
-    # 学生-知识点难度统计字典
-    stats1 = {}
+
 
     for record in records:
         student, knowledge, correct, diff_str, error, time_str = record

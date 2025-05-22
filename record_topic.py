@@ -32,15 +32,15 @@ def record_point_and_topic(src_path):
     topic_data_dict = {'唯一标识': None, '一级标签': None, '二级标签': None, '三级标签': None, '四级标签': None,
                        '五级标签': None, '六级标签': None, '分类训练题类型': None, '套卷类型': None, '题型(小项)': None,
                        '题型(细项)': None, '题目出题逻辑': None, '题目难度': None, '题目考频': None,
-                       '是否解法不唯一': '否', '题目适用年级': None, '资料来源': None, '页码': None}  # 题目数据字典
+                       '是否解法不唯一': '否', '题目属性题目来源': None, '资料来源': None, '页码': None}  # 题目数据字典
     id = generate_file_id()
     # 一个文件的所有标签解析
     for label in label_list:
-        if len(label) < 2: continue
+        if len(label) < 3: continue
         # 题目类型
         if label[0] == 'Z':
             # 类型解析
-            if label[0:2] == 'ZC':
+            if label[0:3] == 'ZBA':
                 label_type.append(label + '6' * (6 - len(label)))
             # 页码解析
             elif label[0:2] == 'ZP':
@@ -106,7 +106,7 @@ def record_point_and_topic(src_path):
         conn.commit()
         shutil.copy(src_path, point_data_dict['存储路径'])
     # 题库
-    if len(label_type) > 0 and label_type[0][0:3] == 'ZCB':
+    if len(label_type) > 0 and label_type[0][0:3] == 'ZBA':
         sql = 'select topic_id from topic_recode_table where topic_id = ?'
         cursor.execute(sql, (id,))
         if len(cursor.fetchall()) > 0:
@@ -122,6 +122,9 @@ def record_point_and_topic(src_path):
                 topic_data_dict['分类训练题类型'] = cursor.fetchall()[0][-1]
             if label_type[i][0:4] == 'ZCBB':
                 topic_data_dict['套卷类型'] = cursor.fetchall()[0][-1]
+            # 题目属性题目来源
+            if label_type[i][0:3] == 'ZBA':
+                topic_data_dict['题目属性题目来源'] = cursor.fetchall()[0][-1]
         # 资料来源
         for label in label_list:
             if label[0:2] == 'ZE':
@@ -162,12 +165,6 @@ def record_point_and_topic(src_path):
                 cursor.execute(sql, (label,))
                 result = cursor.fetchall()[0]
                 topic_data_dict['是否解法不唯一'] = result[0]
-            # 适用年级
-            if label[0:3] == 'ZBE':
-                sql = 'select label_detail_name from topic_label_table where label_code = ?'
-                cursor.execute(sql, (label,))
-                result = cursor.fetchall()[0]
-                topic_data_dict['题目适用年级'] = result[0]
         # 记录知识点信息
         for index in range(len(point_label_list)):
             code_list = []
@@ -184,14 +181,14 @@ def record_point_and_topic(src_path):
             save_dir = topic_save_path + '\\' + point_label_list[0][0] + '-' + topic_data_dict['一级标签'][-2:]
             save_name = topic_data_dict['唯一标识'] + ',' + ",".join(label_list) + ".png"
             topic_data_dict['存储路径'] = os.path.join(save_dir, save_name)
-            sql = 'insert into topic_recode_table(topic_id,point_code,first_label,second_label,third_label,fourth_label,fifth_label,sixth_label,train_topic_type,exam_type,topic_minor_type,topic_detail_type,logic,dificulty,frequency,method_num,grade,topic_from,page,save_path) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+            sql = 'insert into topic_recode_table(topic_id,point_code,first_label,second_label,third_label,fourth_label,fifth_label,sixth_label,train_topic_type,exam_type,topic_minor_type,topic_detail_type,logic,dificulty,frequency,method_num,topic_source,topic_from,page,save_path) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
             cursor.execute(sql, (
                 topic_data_dict['唯一标识'], point_label_list[index], topic_data_dict['一级标签'],
                 topic_data_dict['二级标签'], topic_data_dict['三级标签'], topic_data_dict['四级标签'],
                 topic_data_dict['五级标签'], topic_data_dict['六级标签'], topic_data_dict['分类训练题类型'],
                 topic_data_dict['套卷类型'], topic_data_dict['题型(小项)'], topic_data_dict['题型(细项)'],
                 topic_data_dict['题目出题逻辑'], topic_data_dict['题目难度'], topic_data_dict['题目考频'],
-                topic_data_dict['是否解法不唯一'], topic_data_dict['题目适用年级'], topic_data_dict['资料来源'],
+                topic_data_dict['是否解法不唯一'], topic_data_dict['题目属性题目来源'], topic_data_dict['资料来源'],
                 topic_data_dict['页码'], topic_data_dict['存储路径'],))
             conn.commit()
         shutil.copy(os.path.join(cwd, src_path), topic_data_dict['存储路径'])

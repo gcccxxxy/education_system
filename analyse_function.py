@@ -44,12 +44,14 @@ def query_topic_and_correct_number(student_name, hard_list_str, point):
     correct_num = result[0][0]
     return topic_num, correct_num
 
+
 def safe_date_parse(date_str):
     """安全解析日期，处理异常情况"""
     try:
         return datetime.strptime(date_str, '%Y%m%d')
     except:
         return None
+
 
 def calculate_ablility(student_name, hard_list_str, point):
     level_list = ['first_label', 'second_label', 'third_label', 'forth_label', 'fifth_label']
@@ -131,5 +133,96 @@ def calculate_ablility(student_name, hard_list_str, point):
     return mastery
 
 
+def calculate_ablility_dic():
+    query = """
+        SELECT student_name,
+               COALESCE(fifth_label, forth_label, third_label) AS knowledge_point,
+               correct,
+               difficulty,
+               error_type,
+               time
+        FROM student_topic_table
+        WHERE knowledge_point IS NOT NULL  -- 过滤无知识点记录
+        """
+
+    # 获取最细粒度知识点（优先使用第五级）
+    cursor.execute(query)
+    records = cursor.fetchall()
+
+    # 学生-知识点统计字典
+    stats = {}
+
+    for record in records:
+        student, knowledge, correct, diff_str, error, time_str = record
+        difficulty = int(diff_str.replace('难度', ''))  # 提取难度值
+
+        # 安全处理日期
+        answer_date = safe_date_parse(time_str)
+        if not answer_date:
+            weight = 0.8  # 默认权重调整为0.8
+        else:
+            try:
+                days_ago = (CURRENT_DATE - answer_date).days
+                if days_ago < 0:
+                    # 未来日期使用反向衰减（越远的未来权重越高）
+                    weight = 1 / (1 + abs(days_ago)) ** DECAY_FACTOR
+                else:
+                    weight = 1 / (1 + days_ago) ** DECAY_FACTOR
+                weight = max(0.2, min(weight, 1.0))  # 限制权重范围0.2-1.0
+            except:
+                weight = 0.8  # 兜底处理
+
+        # 基础分计算（强化全对奖励）
+        if correct == '全对':
+            base_score = difficulty * 1.8  # 奖励系数提升至1.5
+        elif correct == '半对':
+            base_score = difficulty * 0.8
+        else:
+            base_score = 0.0
+
+        # 错误扣分（优化非错误情况处理）
+        penalty = ERROR_PENALTY.get(error, 0.2) if error else 0.0
+
+        # 最终得分（增加非负限制）
+        final_score = max(0.0, (base_score - penalty)) * weight
+
+        # 累计统计
+        key = (student, knowledge)
+        if key not in stats:
+            stats[key] = {'total': 0.0, 'max_possible': 0.0}
+
+        stats[key]['total'] += final_score
+        # 最大可能得分（假设全对且无错误）
+        stats[key]['max_possible'] += difficulty * 1.5 * weight  # 匹配奖励系数
+
+    # 生成结果并归一化到1-10分
+    results = {}
+    for (student, knowledge), data in stats.items():
+        if data['max_possible'] == 0:
+            mastery = 1.0
+        else:
+            raw_score = data['total'] / data['max_possible']
+            # 分段线性归一化（更直观的评分机制）
+            if raw_score >= 0.9:
+                mastery = 9 + (raw_score - 0.9) * 10
+            elif raw_score >= 0.7:
+                mastery = 7 + (raw_score - 0.7) * 10
+            elif raw_score >= 0.5:
+                mastery = 5 + (raw_score - 0.5) * 10
+            else:
+                mastery = 1 + raw_score * 4
+            mastery = round(max(1.0, min(10.0, mastery)), 1)
+        if student not in results.keys():
+            results[student] = {}
+        results[student][knowledge] = mastery
+    return results
+
+
+def create_exam(student_name, mastery_dic, auto, topic_type_list=None, topic_difficulty_list=None, exam_hard_list=None,
+                exam_topic_type=None):
+    if auto is True:
+        pass
+
+
 if __name__ == "__main__":
-    print(calculate_ablility('XiaoA', '难度2', '初中数学'))
+    print(calculate_ablility_dic())

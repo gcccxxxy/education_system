@@ -2,6 +2,7 @@
 import os
 import random
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -40,14 +41,41 @@ result = cursor.execute(sql, ('ZBB%',))
 for res in result:
     topic_difficulty_list.append(res[0])
 print(topic_difficulty_list)
+topic_from_list = []
+result = cursor.execute(sql, ('ZBA%',))
+for res in result:
+    topic_from_list.append(res[0])
+print(topic_from_list)
 point_list = []
 sql = "SELECT label_code From point_label_table"
 result = cursor.execute(sql, ())
 for res in result:
     point_list.append(res[0])
 print(point_list)
+sql = "SELECT label_code From point_label_table"
+result = cursor.execute(sql, ())
+for res in result:
+    point_list.append(res[0])
+print(point_list)
 
-for i in range(20000):
-    name = random.choice(point_list) + ',' + random.choice(topic_type_list) + ',' + random.choice(
-        topic_difficulty_list) + ',ZCBAA6'
+
+def work(_):
+    local_random = random.Random()
+    name = local_random.choice(point_list) + ',' + local_random.choice(topic_type_list) + ',' + local_random.choice(
+        topic_difficulty_list) + ',' + local_random.choice(topic_from_list)
     create_topic(name)
+
+
+# 多线程加速
+with ThreadPoolExecutor(max_workers=20) as executor:  # max_workers指定了线程池中的线程数量
+    futures = [executor.submit(work, i) for i in range(20000)]
+    for future in as_completed(futures):
+        try:
+            future.result()
+        except Exception as e:
+            print("Error:", e)
+# 单线程
+# for i in range(5):
+#     name = random.choice(point_list) + ',' + random.choice(topic_type_list) + ',' + random.choice(
+#         topic_difficulty_list) + ',' + random.choice(topic_from_list)
+#     create_topic(name)
