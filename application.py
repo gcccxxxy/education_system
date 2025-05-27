@@ -42,6 +42,8 @@ class Tab1Window(QWidget):
         self.ui.comboBox.myadditems(diff_list)
         # 查询学力
         self.ui.pushButton.clicked.connect(self.analyse)
+        # 生成试卷
+        self.ui.pushButton_2.clicked.connect(self.create_exam)
 
     def analyse(self):
         student_name = self.ui.textEdit.toPlainText()
@@ -65,6 +67,14 @@ class Tab1Window(QWidget):
         self.ui.textBrowser_2.setFont(self.font)
         self.ui.textBrowser_3.setText('\n' + str(study_ability))
         self.ui.textBrowser_3.setFont(self.font)
+
+    def create_exam(self):
+        student_name = self.ui.textEdit.toPlainText()
+        if len(student_name) == 0:
+            QMessageBox.critical(self.parent, '错误', '请输入学生姓名', QMessageBox.Ok)
+            return
+        create_exam(student_name,True)
+        QMessageBox.information(self.parent, "成功", "试卷生成成功", QMessageBox.Ok)
 
 
 class MainWindow(QMainWindow):

@@ -34,9 +34,8 @@ point_list = []
 exam_hard_list = []
 exam_topic_type = []
 correct_list = ['全对', '半对', '全错']
-error_list = ['审题不认真', '忽略了情况', '低级差错', '没想起对应的知识点', '知识点对应错误', '知识点记忆差错',
-              '题目理解错误', '想不到解题思路']
-
+error_list = ['低级错误', '答题书写不规范被扣分', '其他错误', '知识点记忆差错', '知识点记忆差错', '知识点记忆差错',
+              '解题思路差错', '解题思路差错']
 cwd = os.path.join(os.getcwd(), '学生做题信息')
 conn = sqlite3.connect('data.db')
 cursor = conn.cursor()
@@ -57,7 +56,7 @@ result = cursor.execute(sql, ())
 for res in result:
     point_list.append(res[0])
 print(point_list)
-topic_type = 'ZCBBA6'
+# topic_type = 'ZCBBA6'
 
 for i in range(0, 3):
     exam_hard_list.append(topic_difficulty_list[random.choice([0, 1, 2])])
@@ -162,8 +161,8 @@ def create_student_exam(easy, medium, hard, easy_error, medium_error, hard_error
 
 
 start_date = datetime.strptime("20240401", "%Y%m%d")
-for i in range(60, 74):
-    current_date = start_date + timedelta((i-60) * 30)
+for i in range(70, 95):
+    current_date = start_date + timedelta((i-70) * 30)
     current_date = current_date.strftime("%Y%m%d")
     create_student_exam(xiaoC_easy, xiaoC_medium, xiaoC_hard, xiaoC_easy_error, xiaoC_medium_error, xiaoC_hard_error,
                         'ex00' + str(i).zfill(2), current_date, 'XiaoC')

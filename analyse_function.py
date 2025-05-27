@@ -1,19 +1,19 @@
+import os
+import random
+import shutil
 import sqlite3
 from datetime import datetime
 
 conn = sqlite3.connect('data.db')
 cursor = conn.cursor()
+cwd = os.path.join(os.getcwd(), '千人千卷')
 
-# 错误类型扣分规则（优化权重）
 ERROR_PENALTY = {
-    '知识点对应错误': 2.5,
-    '审题不认真': 0.7,
-    '低级差错': 0.4,
-    '忽略了情况': 1.0,
-    '题目理解错误': 2.0,
-    '知识点记忆差错': 1.8,
-    '想不到解题思路': 3.0,
-    '没想起对应的知识点': 2.8
+    '低级错误': 0.5,
+    '答题书写不规范被扣分': 0.5,
+    '其他错误': 0.4,
+    '知识点记忆差错': 3,
+    '解题思路差错': 1.8
 }
 
 # 时间衰减参数（指数衰减）
@@ -218,10 +218,113 @@ def calculate_ablility_dic():
     return results
 
 
-def create_exam(student_name, mastery_dic, auto, topic_type_list=None, topic_difficulty_list=None, exam_hard_list=None,
+def create_exam_function(student_name, mastery_dic):
+    topic_type_list = []
+    topic_difficulty_list = []
+    exam_hard_list = []
+    exam_topic_type = []
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    sql = "SELECT label_detail_name FROM topic_label_table WHERE label_code like ?"
+
+    result = cursor.execute(sql, ('ZAB%',))
+    for res in result:
+        topic_type_list.append(res[0])
+    # print(topic_type_list)
+
+    result = cursor.execute(sql, ('ZBB%',))
+    for res in result:
+        topic_difficulty_list.append(res[0])
+    for i in range(0, 3):
+        exam_hard_list.append(topic_difficulty_list[random.choice([0, 1, 2])])
+    for i in range(3, 6):
+        exam_hard_list.append(topic_difficulty_list[random.choice([1, 2, 3])])
+    for i in range(6, 9):
+        exam_hard_list.append(topic_difficulty_list[random.choice([3, 4, 5])])
+    exam_hard_list.append(topic_difficulty_list[random.choice([7, 8, 9])])
+    for i in range(10, 13):
+        exam_hard_list.append(topic_difficulty_list[random.choice([0, 1, 2, 3])])
+    exam_hard_list.append(topic_difficulty_list[random.choice([4, 5, 6])])
+    exam_hard_list.append(topic_difficulty_list[random.choice([4, 5, 6])])
+    exam_hard_list.append(topic_difficulty_list[random.choice([7, 8, 9])])
+    for i in range(16, 19):
+        exam_hard_list.append(topic_difficulty_list[random.choice([1, 2, 3])])
+    for i in range(19, 24):
+        exam_hard_list.append(topic_difficulty_list[random.choice([3, 4, 5, 6])])
+    exam_hard_list.append(topic_difficulty_list[random.choice([7, 8, 9])])
+    exam_hard_list.append(topic_difficulty_list[random.choice([8, 9])])
+    # print(exam_hard_list)
+    for i in range(0, 10):
+        exam_topic_type.append(topic_type_list[0])
+    for i in range(10, 16):
+        exam_topic_type.append(topic_type_list[1])
+    exam_topic_type.append(topic_type_list[3])
+    for i in range(17, 26):
+        exam_topic_type.append(topic_type_list[5])
+    # print(exam_topic_type)
+    # print(mastery_dic['XiaoC'])
+    exam_topic_id_list = []
+    num = 0
+    for difficulty in exam_hard_list:
+        difficulty = int(difficulty.replace('难度', ''))  # 提取难度值
+        sub_point_list = []
+        for point in mastery_dic[student_name].keys():
+            if difficulty > mastery_dic[student_name][point]:
+                sub_point_list.append((point, mastery_dic[student_name][point]))
+        if len(sub_point_list) == 0:
+            difficulty += 1
+            while len(sub_point_list) == 0 and difficulty < 11:
+                for point in mastery_dic[student_name].keys():
+                    if difficulty > mastery_dic[student_name][point]:
+                        sub_point_list.append((point, mastery_dic[student_name][point]))
+                if len(sub_point_list) == 0:
+                    difficulty += 1
+                else:
+                    break
+        # # 根据难度选择备选出题知识点，条件是掌握程度与难度相差小于1，若没有则降难度(掌握较差)
+        # while len(sub_point_list) == 0 and difficulty > 0:
+        #     for point in mastery_dic[student_name].keys():
+        #         if 0 <= difficulty - mastery_dic[student_name][point] <= 1:
+        #             sub_point_list.append((point, mastery_dic[student_name][point]))
+        #     if len(sub_point_list) == 0:
+        #         difficulty -= 1
+        #     else:
+        #         break
+        # # 根据难度选择备选出题知识点，条件是掌握程度与难度相差小于1，若没有则升难度（掌握较好）
+        # while len(sub_point_list) == 0 and difficulty < 11:
+        #     for point in mastery_dic[student_name].keys():
+        #         if 0 <= difficulty - mastery_dic[student_name][point] <= 1:
+        #             sub_point_list.append((point, mastery_dic[student_name][point]))
+        #     if len(sub_point_list) == 0:
+        #         difficulty += 1
+        #     else:
+        #         break
+        sub_point_list.sort(key=lambda x: x[1], reverse=True)
+        # 随机选择知识点
+        flag = False
+        while not flag:
+            point = random.choice(sub_point_list)[0]
+            sql = 'select * from topic_recode_table where dificulty = ? and (fourth_label = ? or fifth_label = ?) and topic_detail_type = ?'
+            cursor.execute(sql, ('难度' + str(difficulty), point, point, exam_topic_type[num],))
+            result = cursor.fetchall()
+            if len(result) > 0:
+                exam_topic_id_list.append(random.choice(result))
+                flag = True
+        num += 1
+    # 获取当前时间
+    now = datetime.now()
+    # 将当前时间格式化为 "%Y%m%d%H%M%S"
+    formatted_time = now.strftime("%Y%m%d%H%M%S")
+    os.makedirs(os.path.join(cwd, student_name, formatted_time))
+    for i, topic in enumerate(exam_topic_id_list):
+        shutil.copy(cwd[0] + topic[-1][1:], os.path.join(cwd, student_name, formatted_time, str(i + 1) + '.png'))
+
+
+def create_exam(student_name, auto, topic_type_list=None, topic_difficulty_list=None, exam_hard_list=None,
                 exam_topic_type=None):
     if auto is True:
-        pass
+        dic = calculate_ablility_dic()
+        create_exam_function(student_name, dic)
 
 
 if __name__ == "__main__":
