@@ -6,10 +6,14 @@ from PyQt5.QtWidgets import QTreeWidgetItem
 from analyse_function import *
 from main import Ui_Form as Main_Window
 from tab1 import Ui_Form as Tab1_Window
+from tab2 import Ui_Form as Tab2_Window
 
 database = 'data.db'
 sql_label_list = ['label_1_name', 'label_2_name', 'label_3_name', 'label_4_name', 'label_5_name', 'label_6_name']
 diff_list = ['所有', '难度1', '难度2', '难度3', '难度4', '难度5', '难度6', '难度7', '难度8', '难度9', '难度10']
+topic_type = ['选择题', '填空题', '解答题', '积累与运用', '阅读理解', '写作', '听力', '完形填空', '情景交际',
+              '看图写话', '短文填词', '书面表达', '作图题', '简答题', '实验题', '计算题', '应用题', '材料分析题',
+              '判断题', '论述题']
 
 
 def node_get_full_path(node):
@@ -33,6 +37,7 @@ class Tab1Window(QWidget):
         self.font.setFamily("Arial")  # 设置字体名称
         self.font.setPointSize(10)  # 设置字体大小
         self.font.setBold(True)  # 设置字体为粗体
+        self.ui.textEdit.setFont(self.font)
 
     def InitUI(self, current_item=None):
         self.ui = Tab1_Window()
@@ -73,8 +78,59 @@ class Tab1Window(QWidget):
         if len(student_name) == 0:
             QMessageBox.critical(self.parent, '错误', '请输入学生姓名', QMessageBox.Ok)
             return
-        create_exam(student_name,True)
+        create_exam(student_name, True)
         QMessageBox.information(self.parent, "成功", "试卷生成成功", QMessageBox.Ok)
+
+
+class Tab2Window(QWidget):
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.InitUI()
+        self.font = QFont()
+        self.font.setFamily("Arial")  # 设置字体名称
+        self.font.setPointSize(10)  # 设置字体大小
+        self.font.setBold(True)  # 设置字体为粗体
+        self.ui.textEdit.setFont(self.font)
+
+
+    def InitUI(self, current_item=None):
+        self.ui = Tab2_Window()
+        self.ui.setupUi(self)
+        # 难度下拉框
+        self.ui.comboBox.myadditems(diff_list)
+        # 题型下拉框
+        self.ui.comboBox_2.myadditems(topic_type)
+        self.ui.pushButton.clicked.connect(self.add_row)
+
+    def add_row(self):
+        point = self.ui.textBrowser.toPlainText()
+        difficulty = self.ui.comboBox.currentText()
+        type = self.ui.comboBox_2.currentText()
+        topic_num = self.ui.textEdit.toPlainText()
+        if len(point) == 0:
+            QMessageBox.critical(self.parent, '错误', '请选择知识点', QMessageBox.Ok)
+            return
+        if len(difficulty) == 0:
+            QMessageBox.critical(self.parent, '错误', '请选择难度', QMessageBox.Ok)
+            return
+        if len(type) == 0:
+            QMessageBox.critical(self.parent, '错误', '请选择题型', QMessageBox.Ok)
+            return
+        if len(topic_num) == 0:
+            QMessageBox.critical(self.parent, '错误', '请输入题目数量', QMessageBox.Ok)
+            return
+        # 获取当前行数，作为新行的索引
+        row_position = self.ui.tableWidget.rowCount()
+        # 插入新行
+        self.ui.tableWidget.insertRow(row_position)
+        data = (point,difficulty,type,topic_num)
+        # 设置行数据
+        for col, value in enumerate(data):
+            item = QTableWidgetItem(str(value))
+            self.ui.tableWidget.setItem(row_position, col, item)
+
 
 
 class MainWindow(QMainWindow):
@@ -82,7 +138,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ui = Main_Window()
         self.ui.setupUi(self)
-        self.setWindowTitle("星途优学")
+        self.setWindowTitle("星悦学橙")
         self.conn = sqlite3.connect('data.db')
         self.cursor = self.conn.cursor()
         self.tree = self.ui.treeWidget
@@ -99,9 +155,13 @@ class MainWindow(QMainWindow):
         self.traverse_tree(self.root)
 
         self.first_page = Tab1Window(self)
+        self.second_page = Tab2Window(self)
         layout = QHBoxLayout()
         layout.addWidget(self.first_page)
         self.ui.tab.setLayout(layout)
+        layout = QHBoxLayout()
+        layout.addWidget(self.second_page)
+        self.ui.tab_2.setLayout(layout)
         self.ui.treeWidget.currentItemChanged.connect(self.refresh_tree)
         self.ui.tabWidget.setCurrentIndex(0)
         self.setFixedSize(952, 661)  # 设置固定大小
@@ -150,10 +210,11 @@ class MainWindow(QMainWindow):
             self.first_page.ui.textBrowser_2.clear()
             self.ui.tab.show()
         elif current_index == 1:
-            pass
-            # self.ui.tab_2.close()
-            # self.second_page.InitUI(self.tree.currentItem())
-            # self.ui.tab_2.show()
+            self.ui.tab_2.close()
+            point_name = node_get_full_path(self.tree.currentItem())
+            self.second_page.ui.textBrowser.setText(point_name)
+            self.second_page.ui.textBrowser.setFont(self.second_page.font)
+            self.ui.tab_2.show()
 
 
 if __name__ == "__main__":
