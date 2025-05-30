@@ -16,6 +16,11 @@ topic_type = ['选择题', '填空题', '解答题', '积累与运用', '阅读�
               '判断题', '论述题']
 
 
+def is_strict_integer(s):
+    """严格判断是否为整数（不允许正负号以外的符号）"""
+    s = s.strip()
+    return s.isdigit() or (s.startswith(('-', '+')) and s[1:].isdigit())
+
 def node_get_full_path(node):
     current_dir = node.text(0)
     full_path = current_dir
@@ -94,7 +99,6 @@ class Tab2Window(QWidget):
         self.font.setBold(True)  # 设置字体为粗体
         self.ui.textEdit.setFont(self.font)
 
-
     def InitUI(self, current_item=None):
         self.ui = Tab2_Window()
         self.ui.setupUi(self)
@@ -103,6 +107,10 @@ class Tab2Window(QWidget):
         # 题型下拉框
         self.ui.comboBox_2.myadditems(topic_type)
         self.ui.pushButton.clicked.connect(self.add_row)
+        # 右键菜单
+        self.ui.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
+        self.ui.pushButton_3.clicked.connect(self.clearall)
 
     def add_row(self):
         point = self.ui.textBrowser.toPlainText()
@@ -118,19 +126,60 @@ class Tab2Window(QWidget):
         if len(type) == 0:
             QMessageBox.critical(self.parent, '错误', '请选择题型', QMessageBox.Ok)
             return
+        if len(type.split('; ')) > 1:
+            QMessageBox.critical(self.parent, '错误', '只能选择一种题型', QMessageBox.Ok)
+            return
         if len(topic_num) == 0:
             QMessageBox.critical(self.parent, '错误', '请输入题目数量', QMessageBox.Ok)
+            return
+        if not is_strict_integer(topic_num):
+            QMessageBox.critical(self.parent, '错误', '请输入正确的数字', QMessageBox.Ok)
             return
         # 获取当前行数，作为新行的索引
         row_position = self.ui.tableWidget.rowCount()
         # 插入新行
         self.ui.tableWidget.insertRow(row_position)
-        data = (point,difficulty,type,topic_num)
+        data = (point, difficulty, type, topic_num)
         # 设置行数据
         for col, value in enumerate(data):
             item = QTableWidgetItem(str(value))
+            item.setTextAlignment(Qt.AlignCenter)
             self.ui.tableWidget.setItem(row_position, col, item)
 
+    # 右键菜单
+    def show_context_menu(self, position):
+        # 获取当前选中的行
+        index = self.ui.tableWidget.verticalHeader().logicalIndexAt(position)
+        if index != -1:
+            # 自动选择一整行
+            self.ui.tableWidget.selectRow(index)
+            # 创建一个右键菜单
+            menu = QMenu(self)
+            # 添加一个删除行的动作
+            delete_action = QAction("删除", self)
+            delete_action.triggered.connect(lambda: self.delete_row(index))
+            menu.addAction(delete_action)
+            # 显示右键菜单
+            menu.exec_(self.ui.tableWidget.mapToGlobal(position))
+
+    # 删除
+    def delete_row(self, row_index):
+        self.ui.tableWidget.removeRow(row_index)
+        QMessageBox.information(self, '成功', '删除成功', QMessageBox.Ok)
+
+    # 清空所有
+    def clearall(self):
+        while self.ui.tableWidget.rowCount() > 0:
+            self.ui.tableWidget.removeRow(0)  # 从顶部开始删除行，这样可以避免改变索引的问题
+        self.ui.textEdit.clear()
+        self.ui.textBrowser.clear()
+        self.ui.comboBox.text.clear()
+        for checkbox in self.ui.comboBox.box_list:
+            checkbox.setChecked(False)
+        self.ui.comboBox_2.text.clear()
+        self.ui.comboBox_2.text.clear()
+        for checkbox in self.ui.comboBox_2.box_list:
+            checkbox.setChecked(False)
 
 
 class MainWindow(QMainWindow):
