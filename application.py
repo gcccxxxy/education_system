@@ -1,5 +1,6 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QTreeWidgetItem
 
@@ -7,6 +8,9 @@ from analyse_function import *
 from main import Ui_Form as Main_Window
 from tab1 import Ui_Form as Tab1_Window
 from tab2 import Ui_Form as Tab2_Window
+
+# 在主函数入口之前加入上面的设置即可解决
+QGuiApplication.setAttribute(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
 database = 'data.db'
 sql_label_list = ['label_1_name', 'label_2_name', 'label_3_name', 'label_4_name', 'label_5_name', 'label_6_name']
@@ -20,6 +24,7 @@ def is_strict_integer(s):
     """严格判断是否为整数（不允许正负号以外的符号）"""
     s = s.strip()
     return s.isdigit() or (s.startswith(('-', '+')) and s[1:].isdigit())
+
 
 def node_get_full_path(node):
     current_dir = node.text(0)
@@ -111,6 +116,7 @@ class Tab2Window(QWidget):
         self.ui.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
         self.ui.pushButton_3.clicked.connect(self.clearall)
+        self.ui.pushButton_2.clicked.connect(self.create_topic)
 
     def add_row(self):
         point = self.ui.textBrowser.toPlainText()
@@ -180,6 +186,32 @@ class Tab2Window(QWidget):
         self.ui.comboBox_2.text.clear()
         for checkbox in self.ui.comboBox_2.box_list:
             checkbox.setChecked(False)
+
+    def create_topic(self):
+        data = []
+        row_count = self.ui.tableWidget.rowCount()
+        col_count = self.ui.tableWidget.columnCount()
+        for row in range(row_count):
+            row_data = []
+            for col in range(col_count):
+                item = self.ui.tableWidget.item(row, col)
+                # 检查单元格是否为空
+                if item is not None:
+                    row_data.append(item.text())
+                else:
+                    row_data.append('')  # 空单元格添加空字符串
+            data.append(row_data)
+        topic_point_list, topic_hard_list, topic_type_list, topic_num_list = [], [], [], []
+        for item in data:
+            topic_point_list.append(item[0])
+            topic_hard_list.append(item[1])
+            topic_type_list.append(item[2])
+            topic_num_list.append(item[3])
+        res = create_exam(None, False, topic_point_list, topic_hard_list, topic_type_list, topic_num_list)
+        if res != 1:
+            QMessageBox.critical(self.parent, '错误', res + ' 题库题目数量不足', QMessageBox.Ok)
+        else:
+            QMessageBox.information(self, '成功', '生成成功', QMessageBox.Ok)
 
 
 class MainWindow(QMainWindow):

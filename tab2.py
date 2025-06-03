@@ -26,7 +26,7 @@ class Ui_Form(object):
         self.label_2.setGeometry(QtCore.QRect(40, 110, 51, 31))
         self.label_2.setStyleSheet("font: 14pt \"黑体\";")
         self.label_2.setObjectName("label_2")
-        self.comboBox = ComboCheckBox(Form)
+        self.comboBox = ComboCheckBoxall(Form)
         self.comboBox.setGeometry(QtCore.QRect(100, 110, 91, 31))
         self.comboBox.setObjectName("comboBox")
         self.label_3 = QtWidgets.QLabel(Form)
@@ -129,6 +129,58 @@ class ComboCheckBox(QComboBox):
     def get_selected(self) -> list:
         ret = []
         for i in range(0, len(self.items)):
+            if self.box_list[i].isChecked():
+                ret.append(self.box_list[i].text().split('(')[0])
+        return ret
+
+    def show_selected(self):
+        self.text.clear()
+        ret = '; '.join(self.get_selected())
+        self.text.setText(ret)
+
+class ComboCheckBoxall(QComboBox):
+    def __init__(self, parent):
+        super(ComboCheckBoxall, self).__init__(parent)
+
+        self.box_list = []  # selected items
+        self.text = QLineEdit()  # use to selected items
+        self.state = 0  # use to record state
+        # self.setStyleSheet("width: 300px; height: 50px; font-size: 21px; font-weight: bold")
+        self.text.setReadOnly(True)
+        self.setLineEdit(self.text)
+
+    def myadditems(self, items):
+        self.items = items  # items list
+        q = QListWidget()
+        for i in range(len(self.items)):
+            self.box_list.append(QCheckBox())
+            self.box_list[i].setText(self.items[i])
+            item = QListWidgetItem(q)
+            q.setItemWidget(item, self.box_list[i])
+            if i == 0:
+                self.box_list[i].stateChanged.connect(self.all_selected)
+            else:
+                self.box_list[i].stateChanged.connect(self.show_selected)
+
+        # q.setStyleSheet("font-size: 20px; font-weight: bold; height: 40px; margin-left: 5px")
+        self.setModel(q.model())
+        self.setView(q)
+
+    def all_selected(self):
+        # change state
+        if self.state == 0:
+            self.state = 1
+            for i in range(1, len(self.items)):
+                self.box_list[i].setChecked(True)
+        else:
+            self.state = 0
+            for i in range(1, len(self.items)):
+                self.box_list[i].setChecked(False)
+        self.show_selected()
+
+    def get_selected(self) -> list:
+        ret = []
+        for i in range(1, len(self.items)):
             if self.box_list[i].isChecked():
                 ret.append(self.box_list[i].text().split('(')[0])
         return ret

@@ -21,10 +21,11 @@ DECAY_FACTOR = 0.003  # 调整衰减系数增强近期权重
 
 # 当前日期（来自系统信息）
 CURRENT_DATE = datetime(2025, 4, 23)
+# 知识点标签等级
+level_list = ['first_label', 'second_label', 'third_label', 'fourth_label', 'fifth_label']
 
 
 def query_topic_and_correct_number(student_name, hard_list_str, point):
-    level_list = ['first_label', 'second_label', 'third_label', 'forth_label', 'fifth_label']
     point_split_list = point.split('-')
     level = len(point_split_list)
     hard_list = hard_list_str.replace(' ', '')
@@ -320,11 +321,55 @@ def create_exam_function(student_name, mastery_dic):
         shutil.copy(cwd[0] + topic[-1][1:], os.path.join(cwd, student_name, formatted_time, str(i + 1) + '.png'))
 
 
-def create_exam(student_name, auto, topic_type_list=None, topic_difficulty_list=None, exam_hard_list=None,
-                exam_topic_type=None):
+def create_topic(topic_point_list, topic_hard_list, topic_type_list, topic_num_list, from_list=None):
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    return_list = []
+    for index in range(len(topic_point_list)):
+        # 知识点
+        topic_point_temp = topic_point_list[index].split('-')
+        point_level = len(topic_point_temp)
+        topic_point_level = level_list[point_level - 1]
+        topic_point = '\'' + topic_point_temp[-1] + '\''
+        # 难度
+        hard_list = topic_hard_list[index].replace(' ', '')
+        hard_list = hard_list.split(';')
+        for i in range(len(hard_list)):
+            hard_list[i] = '\'' + hard_list[i] + '\''
+        hard_list = ','.join(hard_list)
+        # 题型
+        type_list = topic_type_list[index].replace(' ', '')
+        type_list = type_list.split(';')
+        for i in range(len(type_list)):
+            type_list[i] = '\'' + type_list[i] + '\''
+        type_list = ','.join(type_list)
+        # 题数
+        topic_num = topic_num_list[index]
+        sql = 'select * from topic_recode_table where {} = {} and dificulty in ({}) and topic_detail_type in ({}) ORDER BY RANDOM() LIMIT {}'.format(
+            topic_point_level, topic_point, hard_list, type_list, topic_num)
+        cursor.execute(sql, )
+        result = cursor.fetchall()
+        if len(result) < int(topic_num):
+            return topic_point
+        for item in result:
+            return_list.append(item)
+    # 获取当前时间
+    now = datetime.now()
+    # 将当前时间格式化为 "%Y%m%d%H%M%S"
+    formatted_time = now.strftime("%Y%m%d%H%M%S")
+    os.makedirs(os.path.join(cwd, '自建题目', formatted_time))
+    for i, topic in enumerate(return_list):
+        shutil.copy(cwd[0] + topic[-1][1:], os.path.join(cwd, '自建题目', formatted_time, str(i + 1) + '.png'))
+    return 1
+
+
+def create_exam(student_name, auto, topic_point_list=None, topic_hard_list=None, topic_type_list=None,
+                topic_num_list=None):
     if auto is True:
         dic = calculate_ablility_dic()
         create_exam_function(student_name, dic)
+    else:
+        return create_topic(topic_point_list, topic_hard_list, topic_type_list, topic_num_list)
 
 
 if __name__ == "__main__":
